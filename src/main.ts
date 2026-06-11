@@ -10,8 +10,35 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
   app.use(cookieParser());
+  const corsOrigin = config.get<string>('CORS_ORIGIN', 'http://localhost:5173');
+  const rootDomain = config.get<string>('ROOT_DOMAIN', 'localhost');
   app.enableCors({
-    origin: config.get<string>('CORS_ORIGIN', 'http://localhost:5173'),
+    origin: (origin, callback) => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      if (origin === corsOrigin || origin.startsWith(`${corsOrigin}/`)) {
+        callback(null, true);
+        return;
+      }
+      try {
+        const url = new URL(origin);
+        const hostname = url.hostname;
+        if (rootDomain === 'localhost') {
+          if (hostname.endsWith('.localhost')) {
+            callback(null, true);
+            return;
+          }
+        } else if (hostname === rootDomain || hostname.endsWith(`.${rootDomain}`)) {
+          callback(null, true);
+          return;
+        }
+      } catch {
+        // ignore invalid origin
+      }
+      callback(null, false);
+    },
     credentials: true,
   });
   app.useGlobalPipes(

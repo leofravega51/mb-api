@@ -25,7 +25,7 @@ import { TenantRepository } from '@/tenants/tenant.repository';
 import { PlanRepository } from '@/plans/plan.repository';
 import { PlanLimitsService } from '@/plans/plan-limits.service';
 import { sanitizeString } from '@/common/utils/sanitize-string';
-import { slugify } from '@/common/utils/slugify';
+import { assertValidTenantSlug } from '@/common/utils/validate-tenant-slug';
 import { RegisterDto } from '@/auth/infrastructure/dto/register.dto';
 import { RegisterTenantDto } from '@/auth/infrastructure/dto/register-tenant.dto';
 import { MailService } from '@/mail/mail.service';
@@ -49,8 +49,7 @@ export class AuthService {
   ) {}
 
   async resolveTenantBySlug(slug: string): Promise<ResolveTenantResponse> {
-    const normalized = slugify(slug);
-    if (!normalized) throw new NotFoundException('Empresa no encontrada');
+    const normalized = assertValidTenantSlug(slug);
 
     const tenant = await this.tenantRepository.findBySlug(normalized);
     if (!tenant) throw new NotFoundException('Empresa no encontrada');
@@ -69,9 +68,10 @@ export class AuthService {
     dto: RegisterTenantDto,
   ): Promise<{ user: SessionUser; tenant: SessionTenant; token: string }> {
     const ownerEmail = sanitizeString(dto.ownerEmail, { type: 'lower' });
-    let slug = dto.slug ? slugify(dto.slug) : slugify(dto.companyName);
+    const slug = dto.slug
+      ? assertValidTenantSlug(dto.slug)
+      : assertValidTenantSlug(dto.companyName);
 
-    if (!slug) throw new BadRequestException('Slug inválido');
     if (await this.tenantRepository.slugExists(slug)) {
       throw new ConflictException('El slug ya está en uso');
     }

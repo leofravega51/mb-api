@@ -14,6 +14,7 @@ import { Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../../application/services/auth.service';
+import { TenantSiteService } from '@/tenants/tenant-site.service';
 import { SessionResponse } from '../interfaces';
 import { LoginDto } from '../dto/login.dto';
 import { RegisterTenantDto } from '../dto/register-tenant.dto';
@@ -33,8 +34,19 @@ export class AuthController {
 
   constructor(
     private readonly authService: AuthService,
+    private readonly tenantSiteService: TenantSiteService,
     private readonly config: ConfigService,
   ) {}
+
+  @Get('check-slug')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  checkSlug(
+    @Query('slug') slug: string,
+    @Query('excludeTenantId') excludeTenantId?: string,
+  ) {
+    if (!slug?.trim()) throw new BadRequestException('Slug requerido');
+    return this.tenantSiteService.isSlugAvailable(slug, excludeTenantId);
+  }
 
   @Get('resolve-tenant')
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
@@ -136,12 +148,14 @@ export class AuthController {
   private setCookie(res: Response, token: string): void {
     const maxAge = Number(this.config.get('COOKIE_MAX_AGE', 604800000));
     const prod = isProduction(this.config.get<string>('NODE_ENV'));
+    const cookieDomain = this.config.get<string>('COOKIE_DOMAIN');
     res.cookie(COOKIE_NAME, token, {
       httpOnly: true,
       secure: prod,
       sameSite: prod ? 'none' : 'lax',
       path: '/',
       maxAge,
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
     });
   }
 
@@ -150,11 +164,13 @@ export class AuthController {
   logout(@Res({ passthrough: true }) res: Response): { ok: boolean } {
     try {
       const prod = isProduction(this.config.get<string>('NODE_ENV'));
+      const cookieDomain = this.config.get<string>('COOKIE_DOMAIN');
       res.clearCookie(COOKIE_NAME, {
         httpOnly: true,
         secure: prod,
         sameSite: prod ? 'none' : 'lax',
         path: '/',
+        ...(cookieDomain ? { domain: cookieDomain } : {}),
       });
       return { ok: true };
     } catch (error) {

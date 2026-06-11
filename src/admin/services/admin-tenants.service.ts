@@ -9,7 +9,7 @@ import { Repository } from 'typeorm';
 import { Tenant } from '@/database/entities/tenant.entity';
 import { Plan } from '@/database/entities/plan.entity';
 import { UserRepository } from '@/users/domain/repositories/user.repository';
-import { slugify } from '@/common/utils/slugify';
+import { assertValidTenantSlug } from '@/common/utils/validate-tenant-slug';
 import type { TenantSummaryDto } from '@/admin/interfaces/admin.interfaces';
 import { UpdateTenantDto } from '@/admin/dto/update-tenant.dto';
 
@@ -48,8 +48,7 @@ export class AdminTenantsService {
     }
 
     if (dto.slug !== undefined) {
-      const slug = slugify(dto.slug);
-      if (!slug) throw new BadRequestException('Slug inválido');
+      const slug = assertValidTenantSlug(dto.slug);
 
       const existing = await this.tenantRepo.findOne({ where: { slug } });
       if (existing && existing.id !== id) {

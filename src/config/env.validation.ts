@@ -73,6 +73,18 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   CORS_ORIGIN: string = 'http://localhost:5173';
+
+  @IsString()
+  @IsOptional()
+  ROOT_DOMAIN: string = 'localhost';
+
+  @IsString()
+  @IsOptional()
+  APP_PORT: string = '5173';
+
+  @IsString()
+  @IsOptional()
+  COOKIE_DOMAIN?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>): Record<string, unknown> {

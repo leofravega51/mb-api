@@ -36,4 +36,8 @@ export class TenantRepository {
     const tenant = this.repo.create(input);
     return this.repo.save(tenant);
   }
+
+  async save(tenant: Tenant): Promise<Tenant> {
+    return this.repo.save(tenant);
+  }
 }
